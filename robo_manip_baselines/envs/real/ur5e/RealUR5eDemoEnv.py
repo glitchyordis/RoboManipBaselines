@@ -1,6 +1,19 @@
+import math
+
 import numpy as np
 
 from .RealUR5eEnvBase import RealUR5eEnvBase
+
+polaris_qpos = np.array(
+    [
+        math.radians(-81.36),
+        math.radians(-97.36),
+        math.radians(-101.46),
+        math.radians(-71.17),
+        math.radians(90.29),
+        math.radians(8.95),
+    ]
+)
 
 
 class RealUR5eDemoEnv(RealUR5eEnvBase):
@@ -10,17 +23,7 @@ class RealUR5eDemoEnv(RealUR5eEnvBase):
     ):
         RealUR5eEnvBase.__init__(
             self,
-            init_qpos=np.array(
-                [
-                    1.18000162,
-                    -1.91696992,
-                    1.5561803,
-                    -1.21203147,
-                    -1.57465679,
-                    -0.39695961,
-                    0.0,
-                ]
-            ),
+            init_qpos=polaris_qpos,
             **kwargs,
         )
 

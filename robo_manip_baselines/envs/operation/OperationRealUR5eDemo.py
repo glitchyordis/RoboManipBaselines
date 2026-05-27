@@ -18,12 +18,14 @@ class OperationRealUR5eDemo:
         gelsight_ids=None,
         pointcloud_camera_ids=None,
         sanwa_keyboard_ids=None,
+        enable_gripper: bool = True,
     ):
         self.robot_ip = robot_ip
         self.camera_ids = camera_ids
         self.gelsight_ids = gelsight_ids
         self.pointcloud_camera_ids = pointcloud_camera_ids
         self.sanwa_keyboard_ids = sanwa_keyboard_ids
+        self.enable_gripper = enable_gripper
         super().__init__()
 
     def setup_env(self, render_mode="human"):
@@ -34,6 +36,7 @@ class OperationRealUR5eDemo:
             gelsight_ids=self.gelsight_ids,
             pointcloud_camera_ids=self.pointcloud_camera_ids,
             sanwa_keyboard_ids=self.sanwa_keyboard_ids,
+            enable_gripper=self.enable_gripper,
         )
 
     def get_pre_motion_phases(self):

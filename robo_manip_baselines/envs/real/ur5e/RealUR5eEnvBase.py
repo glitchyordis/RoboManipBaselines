@@ -4,8 +4,12 @@ from os import path
 import numpy as np
 import rtde_control
 import rtde_receive
-from gello.robots.robotiq_gripper import RobotiqGripper
 from gymnasium.spaces import Box, Dict
+
+try:
+    from gello.robots.robotiq_gripper import RobotiqGripper
+except Exception:  # optional dependency when no gripper is present
+    RobotiqGripper = None
 
 from robo_manip_baselines.common import ArmConfig
 from robo_manip_baselines.teleop import (
@@ -61,9 +65,13 @@ class RealUR5eEnvBase(RealEnvBase):
         gelsight_ids,
         sanwa_keyboard_ids,
         init_qpos,
+        enable_gripper: bool = True,
+        gripper_port: int = 63352,
         **kwargs,
     ):
         super().__init__(**kwargs)
+
+        self.enable_gripper = bool(enable_gripper)
 
         # Setup robot
         self.init_qpos = init_qpos
@@ -94,12 +102,23 @@ class RealUR5eEnvBase(RealEnvBase):
         print(f"[{self.__class__.__name__}] Finish connecting the UR5e.")
 
         # Connect to Robotiq gripper
-        print(f"[{self.__class__.__name__}] Start connecting the Robotiq gripper.")
-        self.gripper_port = 63352
-        self.gripper = RobotiqGripper()
-        self.gripper.connect(hostname=self.robot_ip, port=self.gripper_port)
+        self.gripper = None
         self._gripper_activated = False
-        print(f"[{self.__class__.__name__}] Finish connecting the Robotiq gripper.")
+        if self.enable_gripper:
+            if RobotiqGripper is None:
+                raise ImportError(
+                    f"[{self.__class__.__name__}] enable_gripper=True but Robotiq gripper dependency is not available. "
+                    "Install the required package or set enable_gripper: false in the env config."
+                )
+            print(f"[{self.__class__.__name__}] Start connecting the Robotiq gripper.")
+            self.gripper_port = int(gripper_port)
+            self.gripper = RobotiqGripper()
+            self.gripper.connect(hostname=self.robot_ip, port=self.gripper_port)
+            print(f"[{self.__class__.__name__}] Finish connecting the Robotiq gripper.")
+        else:
+            print(
+                f"[{self.__class__.__name__}] Gripper disabled (enable_gripper=False). Skipping Robotiq connection."
+            )
 
         # Connect to RealSense
         self.setup_realsense(camera_ids)
@@ -145,7 +164,7 @@ class RealUR5eEnvBase(RealEnvBase):
             f"[{self.__class__.__name__}] Finish moving the robot to the reset position."
         )
 
-        if not self._gripper_activated:
+        if self.enable_gripper and (not self._gripper_activated):
             self._gripper_activated = True
             print(f"[{self.__class__.__name__}] Start activating the Robotiq gripper.")
             self.gripper.activate()
@@ -182,10 +201,11 @@ class RealUR5eEnvBase(RealEnvBase):
         self.rtde_c.waitPeriod(period)
 
         # Send command to Robotiq gripper
-        gripper_pos = action[self.body_config_list[0].gripper_joint_idxes][0]
-        speed = 50
-        force = 10
-        self.gripper.move(int(gripper_pos), speed, force)
+        if self.enable_gripper:
+            gripper_pos = action[self.body_config_list[0].gripper_joint_idxes][0]
+            speed = 50
+            force = 10
+            self.gripper.move(int(gripper_pos), speed, force)
 
         # Wait
         elapsed_duration = time.time() - start_time
@@ -199,10 +219,13 @@ class RealUR5eEnvBase(RealEnvBase):
         self.arm_joint_pos_actual = arm_joint_pos.copy()
 
         # Get state from Robotiq gripper
-        gripper_joint_pos = np.array(
-            [self.gripper.get_current_position()], dtype=np.float64
-        )
-        gripper_joint_vel = np.zeros(1)
+        if self.enable_gripper:
+            gripper_joint_pos = np.array(
+                [self.gripper.get_current_position()], dtype=np.float64
+            )
+        else:
+            gripper_joint_pos = np.zeros(1, dtype=np.float64)
+        gripper_joint_vel = np.zeros(1, dtype=np.float64)
 
         # Get wrench from force sensor
         wrench = np.array(self.rtde_r.getActualTCPForce(), dtype=np.float64)

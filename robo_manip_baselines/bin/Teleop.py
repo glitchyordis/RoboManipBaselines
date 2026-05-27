@@ -6,6 +6,7 @@ import sys
 
 import yaml
 
+os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE" # not sure if it really helps
 
 class TeleopMain:
     operation_parent_module_str = "robo_manip_baselines.envs.operation"
